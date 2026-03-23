@@ -11,26 +11,15 @@ import matplotlib.pyplot as plt
 import src.architectures as arch
 from src.architectures import CircularMask, Image_Augmentations
 from src.dataset import GalaxyDataset
-from src.utils import plot_training_curves, get_all_predictions, plot_confusion_matrix, print_performance_report
+from src.utils import plot_training_curves, get_all_predictions, plot_confusion_matrix, print_performance_report, GALAXY10_CLASSES
 
 def load_config(type,parameter):
     with open('configs/config.yaml', 'r') as file:
         config_data = yaml.safe_load(file)
     return config_data[type][parameter]
 
+class_names = GALAXY10_CLASSES
 
-class_names = [
-    "Disturbed Galaxy",
-    "Merging Galaxy",
-    "Round Smooth Galaxy",
-    "In-between Round Smooth Galaxy",
-    "Cigar Shaped Smooth Galaxy",
-    "Barred Spiral Galaxy",
-    "Unbarred Tight Spiral Galaxy",
-    "Unbarred Loose Spiral Galaxy",
-    "Edge-on Galaxy without Bulge",
-    "Edge-on Galaxy with Bulge"
-]
 
 
 def create_dataloader(file,batch_size):

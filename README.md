@@ -4,6 +4,7 @@ This repository provides a deep learning framework for classifying galaxy morpho
 
 This project investigates how convolutional neural networks behave under real-world image inconsistencies such as scale variation, off-center objects, and multiple targets per frame. Using the Galaxy Zoo dataset, we analyze model robustness, feature attribution, and the impact of augmentation strategies on classification performance.
 
+
 ## Directory Structure
 
 The repository is organized to separate data handling, model architecture, and training logic:
@@ -25,7 +26,6 @@ GalaxyZoo_Classifier/
 │   ├── train_ssl.py         # SimCLR contrastive pre-training script
 │   ├── utils.py             # Utilities for plotting and reporting
 │   ├── visualize_augs.py    # Visualization of data augmentation logic
-│   ├── visualize_cm.py      # Confusion matrix generation
 │   └── visualize_features.py # Feature space analysis
 ├── Main_analysis.ipynb      # End-to-end comparative analysis
 └── requirements.txt         # Project dependencies
@@ -50,7 +50,7 @@ The project follows a specific three-step scientific process:
 A baseline CNN is trained using a specific set of augmentations. These augmentations (rotations, flips, color jitters, crops and gaussian blurs) were designed not only to improve generalization, but also to simulate real-world imaging artifacts such as orientation variance, slight blur, and illumination changes. More details about these augmentations are expressed below.
 
 ### 2. SimCLR Pre-training
-The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity.
+The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed and presented below - the SimCLR actually provided worse results than the baseline CNN.
 
 ### 3. LP-FT Training Logic
 To maximize the utility of the SimCLR-pretrained backbone, the pipeline implements a two-phase **Linear Probing then Full Fine-Tuning (LP-FT)** strategy:
@@ -105,7 +105,51 @@ For the SimCLR phase, the project utilizes the **Normalized Temperature-scaled C
 ---
 
 ## Evaluation
-Success is measured by comparing the final accuracy of the fine-tuned SSL model against the initial Baseline CNN. This determines the "performance gain" provided by contrastive pre-training on astrophysical data.
+Our evaluation is based on performence metrics on the test set for each model, which can be viewed below. The normalized confusion metrices are saved in each models directory. Discussion about the reults can be found in the 'Discussion and Results' section.
+
+
+### Baseline CNN performence matrix:
+
+
+| Morphology | Precision | Recall | F1-Score | Support |
+| :--- | :---: | :---: | :---: | :---: |
+| **Disturbed** | 0.56 | 0.60 | 0.58 | 160 |
+| **Merging** | 0.88 | 0.87 | 0.87 | 259 |
+| **Round Smooth** | 0.92 | 0.96 | 0.94 | 376 |
+| **In-between Smooth** | 0.95 | 0.92 | 0.94 | 319 |
+| **Cigar Smooth** | 0.70 | 0.89 | 0.79 | 37 |
+| **Barred Spiral** | 0.85 | 0.87 | 0.86 | 315 |
+| **Tight Spiral** | 0.77 | 0.82 | 0.80 | 293 |
+| **Loose Spiral** | 0.82 | 0.69 | 0.75 | 403 |
+| **Edge-on No Bulge** | 0.88 | 0.92 | 0.90 | 197 |
+| **Edge-on Bulge** | 0.93 | 0.93 | 0.93 | 302 |
+| | | | | |
+| **Accuracy** | | | **0.85** | **2661** |
+| **Macro Average** | 0.83 | 0.85 | 0.84 | 2661 |
+| **Weighted Average** | 0.85 | 0.85 | 0.85 | 2661 |
+
+> **Overall Macro F1-0.8350**
+
+### Finetuned SimCLR model performence matrix:
+
+
+| Morphology | Precision | Recall | F1-Score | Support |
+| :--- | :---: | :---: | :---: | :---: |
+| **Disturbed** | 0.47 | 0.53 | 0.50 | 160 |
+| **Merging** | 0.83 | 0.86 | 0.84 | 259 |
+| **Round Smooth** | 0.91 | 0.93 | 0.92 | 376 |
+| **In-between Smooth** | 0.94 | 0.91 | 0.92 | 319 |
+| **Cigar Smooth** | 0.62 | 0.89 | 0.73 | 37 |
+| **Barred Spiral** | 0.81 | 0.83 | 0.82 | 315 |
+| **Tight Spiral** | 0.73 | 0.80 | 0.76 | 293 |
+| **Loose Spiral** | 0.76 | 0.60 | 0.67 | 403 |
+| **Edge-on No Bulge** | 0.87 | 0.93 | 0.90 | 197 |
+| **Edge-on Bulge** | 0.93 | 0.89 | 0.91 | 302 |
+| **Accuracy** | | | **0.82** | **2661** |
+
+> **Overall Macro F1-Score: 0.7981**
+
+
 
 
 ## Key Insights
@@ -115,9 +159,36 @@ Success is measured by comparing the final accuracy of the fine-tuned SSL model 
 - Augmentation design plays a critical role in preserving meaningful morphological features
 - Self-supervised pretraining (SimCLR) did not improve performance, suggesting that data ambiguity and localization challenges dominate over representation learning limitations
 
+- Detection of Shortcut Learning via Grad-CAM
+    - Baseline CNN: While achieving higher accuracy, feature attribution reveals that the model partially relies on boundary artifacts and spurious background signals for its predictions.
+    - SimCLR: The SSL backbone demonstrates superior object-centricity, successfully ignoring frame-edge noise that confounded the supervised baseline.
+    - Conclusion: The baseline’s "superiority" may be partially inflated by its ability to exploit these shortcuts, whereas SimCLR learns a more physically grounded (though currently less precise) representation. The images are represented below.
+
+    
+### Model Interpretability & Failure Analysis
+
+
+![Baseline CNN Grad-CAM](models/feature%20visualizations/gradcam_visualization_baseline_CNN.png)
+
+---
+
+![SimCLR Grad-CAM](models/feature%20visualizations/gradcam_visualization_SimCLR.png)
+
+
 ## Discussion and Results
 
-The two models (Baseline CNN and the SimCLR fine-tuned model) achieved similar results, with the Baseline CNN model outperforming the SimCLR model by a small margin. The two models performed well on most galaxies (around 80%-90% accuracy) but struggled with certain classes, such as disturbed and loose galaxies that don't have a clear morphology. The baseline CNN model performed better on those classes (60% accuracy compared to 53% in the disturbed class) which gave it the better overall results. The primary challenge was not model capacity, but data inconsistency. In many cases, galaxies were small or surrounded by additional objects, causing the model to attend to incorrect regions and leading to systematic misclassification. 
+The two models (Baseline CNN and the SimCLR fine-tuned model) achieved similar results, with the Baseline CNN model outperforming the SimCLR model by a small margin. The two models performed well on most galaxies (around 80%-90% F1 score) but struggled with certain classes, such as disturbed and loose galaxies that don't have a clear morphology. 
+
+The baseline CNN model performed better on those 'harder' classes which gave it the better overall results. The primary challenge was not model capacity, but data inconsistency. In many cases, galaxies were small or surrounded by additional objects, causing the model to attend to incorrect regions and leading to systematic misclassification.
+
+The SimCLR fine-tuned model underperformed the supervised baseline (0.79 vs 0.84 Macro $F_1$), where the main diffenece was in the distrubed class. As can be seen in the GradCam visualizations, the CNN was better at extracting the meaningful features but not nessecarily finding the correct object to focus on. 
 
 These results indicate that performance is bottlenecked by object localization and data ambiguity rather than model architecture, suggesting that improvements would require better target isolation (e.g., cropping or detection) rather than more complex models. This behavior mirrors real-world vision systems, where failures are often driven by data ambiguity and scene complexity rather than model capacity.
+
+
+## Steps for improvments
+
+As discussed above, the main challenge is the data itself. As training a more complex network such as a ViT could enhance the model's ability to capture global context, it is unlikely to solve the fundamental issue of background interference. A stricter and more robust data augmentation pipeline, or a more sophisticated object detection preprocessing step, would likely yield more significant improvements.
+
+
 
