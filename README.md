@@ -50,6 +50,7 @@ To maximize the utility of the SimCLR-pretrained backbone, the pipeline implemen
     * The learning rate is reset to a lower base rate (e.g., $10^{-4}$ or $10^{-5}$) to subtly refine the backbone features for morphological classification.
 * **Optimization:** Both phases utilize the **AdamW** optimizer combined with a **Cosine Annealing** learning rate scheduler.
 
+In each model's folder there is a .md file with the hyperparameters and augmentations used to train the model.
 
 ### 4. Feature visualization
 
