@@ -1,0 +1,28 @@
+Training Parameters:
+
+  learning_rate: 1e-4
+  weight_decay: 1e-4
+  batch_size: 256
+  num_epochs: 100
+  shuffle: True
+  loading_weights: True
+  freeze_backbone: False
+  loaded_model_name: 'best_simclr_backbone_512_batch_100_epochs.pth'
+
+Architecutre Parameters:
+
+  num_classes: 10
+
+
+Data Parameters:
+  file: 'data/Galaxy10_DECals.h5'
+
+
+SSL Parameters:
+  ssl_method: simclr           # 'simclr' or 'byol'
+  ssl_batch_size: 512
+  num_epochs_ssl: 100
+  weight_decay_ssl: 1e-4
+  learning_rate_ssl: 2e-4
+  # SimCLR-specific
+  temperature: 0.1
