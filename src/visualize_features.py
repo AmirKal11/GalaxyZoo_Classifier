@@ -53,6 +53,14 @@ def load_backbone(device):
     return model
 
 
+def load_CNN(device):
+    model =  arch.CNNclassifier()
+    model.load_state_dict(torch.load('models/CNN model/best_model_supervised_CNN.pth', map_location=device))
+    model.to(device)
+    model.eval()
+    return model
+
+
 def unnormalize(img_tensor):
     """Reverse the Normalize(0.5, 0.5, 0.5) to get pixel values back in [0,1]."""
     return (img_tensor * 0.5 + 0.5).clamp(0, 1)
@@ -352,11 +360,8 @@ def main():
     print(f"Using device: {device}")
 
 
-    model =  arch.CNNclassifier()
-    model.load_state_dict(torch.load('models/CNN model/best_model_supervised_CNN.pth', map_location=device))
-    model.to(device)
-    model.eval()
-    #model = load_backbone(device)
+   
+    model = load_backbone(device)
     test_loader = get_test_loader(batch_size=64)
 
     # 1. Grad-CAM

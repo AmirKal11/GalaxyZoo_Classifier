@@ -2,9 +2,10 @@ import h5py
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+import sys
+import os
 
-# Import our custom transforms
-from architectures import Image_Augmentations
+from src.architectures import Image_Augmentations
 
 def main():
    
@@ -26,12 +27,10 @@ def main():
         axes[i, 0].imshow(img_np)
         axes[i, 0].axis("off")
         
-        # Apply Base Transform (ToTensor: converts to [3, H, W] and normalizes to [0,1])
-        base_tensor = base_transform(img_np)
-        
-        # Simulate BYOL creating two augmented views from the base tensor
-        view1 = aug(base_tensor)
-        view2 = aug(base_tensor)
+        # Obtain two augmented views directly
+        views = aug(img_np)
+        view1 = views[0]
+        view2 = views[1]
         
         # Helper to un-normalize from [-1, 1] back to [0, 1] for matplotlib
         def unnormalize(t):
@@ -52,7 +51,6 @@ def main():
 
 if __name__ == "__main__":
     # Ensure sys path knows about src if executed from root
-    import sys
-    import os
+    
     sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
     main()

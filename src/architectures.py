@@ -46,29 +46,7 @@ class Image_Augmentations():
         return [self.transformations(x),self.transformations(x)]
 
 
-class BYOL_Base_Transform():
-    def __init__(self):
-        self.transformations = transforms.Compose([
-            transforms.ToTensor(),
-        ])
-    def __call__(self, x):
-        return self.transformations(x)
 
-class BYOL_augmentations():
-    """Augmentations for BYOL training (applied directly on batched tensors)."""
-    def __init__(self, size=144):
-        self.transformations = v2.Compose([
-            v2.RandomAffine(degrees=180, scale=(1.0, 1.5)), # Zooms IN only, preventing black padding shortcuts
-            v2.CenterCrop(size),
-            v2.RandomHorizontalFlip(),
-            v2.RandomVerticalFlip(),
-            v2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0, hue=0),
-            v2.GaussianBlur(kernel_size=5, sigma=(0.1, 1.5)), # Smoothes out sensor noise shortcuts
-            v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        ])
-
-    def __call__(self, x):
-        return self.transformations(x)
 class SimCLRModel(nn.Module):
     def __init__(self, backbone, projection_dim=128):
         super().__init__()

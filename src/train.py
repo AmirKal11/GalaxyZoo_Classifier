@@ -42,11 +42,8 @@ def create_dataloader(file,batch_size):
         v2.ToDtype(torch.float32, scale=True),
         v2.CenterCrop(144),
         v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-        #CircularMask(radius_fraction=0.4)
     ])
     
-    
-
     train_dataset = GalaxyDataset(file_path = file,transform=train_transforms,split='train')
     val_dataset = GalaxyDataset(file_path = file,transform=val_transforms,split='val')
     test_dataset = GalaxyDataset(file_path = file,transform=val_transforms,split='test')
@@ -86,7 +83,6 @@ def train_one_epoch(model, dataloader, optimizer, criterion,device = torch.devic
         
         loss.backward()
         optimizer.step()
-        #if batch_idx % 200 == 0: print(f"Batch {batch_idx} Loss: {loss.item():.4f}")
 
     return train_loss/len(dataloader), train_acc/len(dataloader.dataset)
 
@@ -102,19 +98,19 @@ def validate(model, dataloader, criterion, device):
             _,pred = torch.max(output,1)
             val_acc += (pred == target).sum().item()
             val_loss += loss.item()
-            #if batch_idx % 200 == 0: print(f"Batch {batch_idx} Loss: {loss.item():.4f}")
     return val_loss/len(dataloader), val_acc/len(dataloader.dataset)
 
         
 
 
-def main():
+def main(**kwargs):
     batch_size = load_config('Training Parameters', 'batch_size')
     file = load_config('Data Parameters', 'file')
-    loading_weights = load_config('Training Parameters', 'loading_weights')
+    
+    loading_weights = kwargs.get('loading_weights',load_config('Training Parameters', 'loading_weights'))
     
     train_dataloader, val_dataloader, test_dataloader, weights = create_dataloader(file,batch_size)
-    freeze_backbone = load_config('Training Parameters', 'freeze_backbone')    
+    freeze_backbone = kwargs.get('freeze_backbone',load_config('Training Parameters', 'freeze_backbone'))    
     
     device = torch.device('mps')
     class_weights = weights.to(device)
@@ -126,17 +122,14 @@ def main():
         
        
 
-        # Strip prefixes correctly BEFORE loading
         new_state_dict = {k.replace("backbone.", ""): v for k, v in state_dict.items()}
         
-        # Load weights once
         msg = model.load_state_dict(new_state_dict, strict=False)
         print(f"Load Status: {msg}")
 
-        # Freeze Backbone if configured
         if freeze_backbone:
             for name, param in model.named_parameters():
-                if "fc" not in name: # Adjust 'fc' to whatever your head is named
+                if "fc" not in name:
                     param.requires_grad = False
             print("Backbone frozen. Training classification head only.")
         else:
@@ -185,7 +178,7 @@ def main():
             best_val_acc = val_acc
             print("--- New Best Val Acc! Model Saved ---")
             
-            save_name = 'best_model_linear_probe_masked.pth' if loading_weights else 'best_model_supervised_CNN_masked.pth'
+            save_name = 'best_model_finetuned.pth' if loading_weights else 'best_model_supervised_CNN.pth'
             torch.save(model.state_dict(), f'models/{save_name}')
         history['train_loss'].append(train_loss)
         history['val_loss'].append(val_loss)
@@ -203,13 +196,13 @@ def main():
         save_path='models/training_metrics.png'
     )
 
-    save_name = 'best_model_linear_probe.pth' if loading_weights else 'best_model_supervised_CNN.pth'
+    save_name = 'best_model_finetuned.pth' if loading_weights else 'best_model_supervised_CNN.pth'
     model.load_state_dict(torch.load(f'models/{save_name}'))
 
     # Generate final reports
     y_true, y_pred = get_all_predictions(model, test_dataloader, device)
     print_performance_report(y_true, y_pred, class_names)
-    cm_save_name = 'final_cm_linear_probe_masked.png' if loading_weights else 'final_cm_supervised_CNN_masked.png'
+    cm_save_name = 'final_cm_finetuned_model.png' if loading_weights else 'final_cm_supervised_CNN.png'
     plot_confusion_matrix(y_true, y_pred, class_names, save_path=f'models/{cm_save_name}')
    
    

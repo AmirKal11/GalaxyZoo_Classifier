@@ -7,13 +7,13 @@ This document records the hyperparameters used to train the CNN from scratch (ra
 * **Epochs (`num_epochs`):** `100`
 
 ## Optimizer & Hyperparameters
-* **Learning Rate (`learning_rate`):** `1e-3` *(High starting rate strictly required to map a completely randomized neural network to a 10-class problem)*
+* **Learning Rate (`learning_rate`):** `1e-3` 
 * **Weight Decay (`weight_decay`):** `0`
 * **Batch Size:** `256`
 * **Scheduler:** Cosine Annealing
 
 ## Data Augmentations
-To ensure the baseline does not trivially overfit the 12,000 training images, we applied the exact structurally-robust `v2` augmentation stack perfected during our SSL testing. These transformations aggressively mutate the image while strictly pinning the target galaxy mathematically in the center of the frame:
+
 
 1. `v2.ToImage()` & `v2.ToDtype()` 
 2. `v2.RandomAffine(degrees=180, scale=(1.0, 1.5))` *(Rotates and zooms IN, mathematically preventing any black zero-padding from entering the tensor)*

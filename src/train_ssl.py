@@ -8,8 +8,8 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LinearLR, CosineAnnealingLR, SequentialLR
 from matplotlib import pyplot as plt
 
-from architectures import Image_Augmentations, BYOL_Base_Transform, BYOL_augmentations, SimCLRModel, CNNclassifier 
-from dataset import GalaxyDataset
+from src.architectures import Image_Augmentations, SimCLRModel, CNNclassifier 
+from src.dataset import GalaxyDataset
 import numpy as np
 import yaml
 
@@ -20,17 +20,10 @@ def load_config(type,parameter):
 
 
 
-def create_ssl_dataloader(file_path, batch_size, method='byol'):    
-    if method == 'simclr':
-        ssl_transform = Image_Augmentations(size=144)
-        train_dataset = GalaxyDataset(file_path=file_path, transform=ssl_transform, split='train', ssl_mode=True)
-        val_dataset = GalaxyDataset(file_path=file_path, transform=ssl_transform, split='val', ssl_mode=True)
-    else:  # byol
-        byol_base_transform = BYOL_Base_Transform()
-        # ssl_mode=False because BYOL's wrapper handles dual-view creation internally.
-        # The dataset returns (image, label); we ignore the label during training.
-        train_dataset = GalaxyDataset(file_path=file_path, transform=byol_base_transform, split='train', ssl_mode=False)
-        val_dataset = GalaxyDataset(file_path=file_path, transform=byol_base_transform, split='val', ssl_mode=False)
+def create_ssl_dataloader(file_path, batch_size):    
+    ssl_transform = Image_Augmentations(size=144)
+    train_dataset = GalaxyDataset(file_path=file_path, transform=ssl_transform, split='train', ssl_mode=True)
+    val_dataset = GalaxyDataset(file_path=file_path, transform=ssl_transform, split='val', ssl_mode=True)
     
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
@@ -104,42 +97,6 @@ def validate_simclr(model, loader, device, temperature):
     return total_loss / len(loader)
 
 
-# ─────────────────────────────────────
-#  BYOL functions
-# ─────────────────────────────────────
-
-def train_one_epoch_byol(learner, dataloader, optimizer, device):
-    learner.train()
-    total_loss = 0
-
-    for batch_idx, (images, _) in enumerate(dataloader):
-        images = images.to(device)
-        optimizer.zero_grad()
-        
-        loss = learner(images)
-        total_loss += loss.item()
-        
-        loss.backward()
-        optimizer.step()
-        learner.update_moving_average()
-        
-        if batch_idx % 50 == 0:
-            print(f"Batch {batch_idx} Loss: {loss.item():.4f}")
-
-    return total_loss / len(dataloader)
-
-
-def validate_byol(learner, loader, device):
-    learner.eval()
-    total_loss = 0
-    
-    with torch.no_grad():
-        for images, _ in loader:
-            images = images.to(device)
-            loss = learner(images)
-            total_loss += loss.item()
-            
-    return total_loss / len(loader)
 
 
 # ─────────────────────────────────────
@@ -147,42 +104,25 @@ def validate_byol(learner, loader, device):
 # ─────────────────────────────────────
 
 def main_ssl():
-    method = load_config('SSL Parameters', 'ssl_method')  # 'simclr' or 'byol'
+    method = load_config('SSL Parameters', 'ssl_method')
     base_lr = float(load_config('SSL Parameters', 'learning_rate_ssl'))
     warmup_epochs = 10
     total_epochs = load_config('SSL Parameters', 'num_epochs_ssl')
     file_path = load_config('Data Parameters', 'file')
     batch_size = load_config('SSL Parameters', 'ssl_batch_size')
     
-    train_dataloader, val_dataloader = create_ssl_dataloader(file_path, batch_size, method=method)
+    train_dataloader, val_dataloader = create_ssl_dataloader(file_path, batch_size)
     print(f'Created dataloaders for {method.upper()}')
 
     device = torch.device('mps')
     backbone = CNNclassifier()
 
-    if method == 'simclr':
-        temperature = load_config('SSL Parameters', 'temperature')
-        model = SimCLRModel(backbone=backbone)
-        model.to(device)
-        print('Initialized SimCLR model')
+    temperature = load_config('SSL Parameters', 'temperature')
+    model = SimCLRModel(backbone=backbone)
+    model.to(device)
+    print('Initialized SimCLR model')
 
-        optimizer = optim.AdamW(model.parameters(), lr=base_lr, weight_decay=float(load_config('SSL Parameters', 'weight_decay_ssl')))
-    else:  # byol
-        from byol_pytorch import BYOL
-        moving_average_decay = load_config('SSL Parameters', 'moving_average_decay')
-        byol_aug = BYOL_augmentations(size=144)
-        learner = BYOL(
-            net=backbone,
-            image_size=144,
-            hidden_layer='avgpool',
-            moving_average_decay=moving_average_decay,
-            augment_fn=byol_aug,
-            augment_fn2=byol_aug
-        )
-        learner.to(device)
-        print('Initialized BYOL learner')
-
-        optimizer = optim.AdamW(learner.parameters(), lr=base_lr, weight_decay=float(load_config('SSL Parameters', 'weight_decay_ssl')))
+    optimizer = optim.AdamW(model.parameters(), lr=base_lr, weight_decay=float(load_config('SSL Parameters', 'weight_decay_ssl')))
 
     scheduler_warmup = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_epochs)
     scheduler_cosine = CosineAnnealingLR(optimizer, T_max=(total_epochs - warmup_epochs), eta_min=1e-6)
@@ -197,12 +137,8 @@ def main_ssl():
     history = {'train_loss': [], 'val_loss': []}
 
     for epoch in range(total_epochs):
-        if method == 'simclr':
-            train_loss = train_one_epoch_simclr(model, train_dataloader, optimizer, device, temperature)
-            val_loss = validate_simclr(model, val_dataloader, device, temperature)
-        elif method == 'byol':  
-            train_loss = train_one_epoch_byol(learner, train_dataloader, optimizer, device)
-            val_loss = validate_byol(learner, val_dataloader, device)
+        train_loss = train_one_epoch_simclr(model, train_dataloader, optimizer, device, temperature)
+        val_loss = validate_simclr(model, val_dataloader, device, temperature)
 
         print('Computed loss')
         scheduler.step()
