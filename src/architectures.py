@@ -23,7 +23,6 @@ class CircularMask:
         x = torch.arange(W).float().unsqueeze(0)
         dist = torch.sqrt((y - cy) ** 2 + (x - cx) ** 2)
 
-        # Smooth falloff: 1 inside radius, fades to 0 outside
         mask = torch.clamp(1.0 - (dist - radius) / (radius * 0.15), 0, 1)
         return img_tensor * mask.unsqueeze(0)
 
@@ -38,7 +37,7 @@ class Image_Augmentations():
             v2.RandomHorizontalFlip(),
             v2.RandomVerticalFlip(),
             v2.ColorJitter(brightness=0.4, contrast=0.4, saturation=0, hue=0),
-            v2.GaussianBlur(kernel_size=5, sigma=(0.1, 1.5)), # Smoothes out sensor noise shortcuts
+            v2.GaussianBlur(kernel_size=5, sigma=(0.1, 1.5)),
             v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         ])
 
@@ -81,7 +80,6 @@ class ResidualBlock(nn.Module):
                                stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
         
-        # This is the 'Shortcut' logic
         self.shortcut = nn.Sequential()
         if stride != 1 or in_channels != out_channels:
             self.shortcut = nn.Sequential(
@@ -94,7 +92,6 @@ class ResidualBlock(nn.Module):
         out = self.gelu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         
-        # The key ResNet step: Add the input back to the output!
         out += self.shortcut(identity) 
         return self.gelu(out)
 

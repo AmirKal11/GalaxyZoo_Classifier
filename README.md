@@ -49,6 +49,11 @@ The project follows a specific three-step scientific process:
 ### 1. Baseline CNN Training
 A baseline CNN is trained using a specific set of augmentations. These augmentations (rotations, flips, color jitters, crops and gaussian blurs) were designed not only to improve generalization, but also to simulate real-world imaging artifacts such as orientation variance, slight blur, and illumination changes. More details about these augmentations are expressed below.
 
+The architecture was inspired by ResNet, and can be seen here:
+
+![CNN architecture](models/CNNclassifier_Architecture.png)
+
+
 ### 2. SimCLR Pre-training
 The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed and presented below - the SimCLR actually provided worse results than the baseline CNN.
 
