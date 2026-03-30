@@ -4,6 +4,10 @@ This repository provides a deep learning framework for classifying galaxy morpho
 
 This project investigates how convolutional neural networks behave under real-world image inconsistencies such as scale variation, off-center objects, and multiple targets per frame. Using the Galaxy Zoo dataset, we analyze model robustness, feature attribution, and the impact of augmentation strategies on classification performance.
 
+## The data
+
+The dataset used in this project consists of 17,700 images of galaxies, split into 10 labels. Each galaxy is labeled according to its visual shape (or morphology), such as smooth and round, spiral with arms, or irregular and disturbed. These labels were originally provided through the Galaxy Zoo project, where volunteers helped classify galaxies based on their appearance. The goal of this dataset is to teach a model to recognize these visual patterns automatically, similar to how a human would distinguish between different galaxy types by eye.
+
 
 ## Directory Structure
 
@@ -47,24 +51,24 @@ These factors make the task closer to real-world vision systems, where robustnes
 The project follows a specific three-step scientific process:
 
 ### 1. Baseline CNN Training
-A baseline CNN is trained using a specific set of augmentations. These augmentations (rotations, flips, color jitters, crops and gaussian blurs) were designed not only to improve generalization, but also to simulate real-world imaging artifacts such as orientation variance, slight blur, and illumination changes. More details about these augmentations are expressed below.
+A baseline CNN is trained using a specific set of augmentations. The augmentations (rotations, flips, color jitters, crops and gaussian blurs) were designed not only to improve generalization, but also to simulate real-world imaging artifacts such as orientation variance, slight blur, and illumination changes. More details about these augmentations are expressed below.
 
-The architecture was inspired by ResNet, and can be seen here:
+The architecture was inspired by ResNet with CrossEntropy loss function, and can be seen here:
 
 ![CNN architecture](models/CNNclassifier_Architecture.png)
 
 
 ### 2. SimCLR Pre-training
-The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed and presented below - the SimCLR actually provided worse results than the baseline CNN.
+The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed below, the SimCLR actually provided worse results than the baseline CNN. For the SimCLR training hyperparameters, see the .md file in the SimCLR training folder.
 
 ### 3. LP-FT Training Logic
 To maximize the utility of the SimCLR-pretrained backbone, the pipeline implements a two-phase **Linear Probing then Full Fine-Tuning (LP-FT)** strategy:
 
 - **Phase 1: Linear Probing (Epochs $0$–$20$):**
-    * The pre-trained backbone is frozen (`requires_grad = False`), and only the fully connected (`fc`) classification head is trained.
+    * The pre-trained backbone is frozen, and only the fully connected (`fc`) classification head is trained.
     * A higher learning rate (starting at $10^{-2}$) is used to "warm up" the head without distorting the pre-trained features.
 - **Phase 2: Full Fine-Tuning (Epochs $20+$):**
-    * The entire network is unfrozen (`requires_grad = True`) to allow for end-to-end optimization.
+    * The entire network is unfrozen to allow for end-to-end optimization.
     * The learning rate is reset to a lower base rate (e.g., $10^{-4}$ or $10^{-5}$) to subtly refine the backbone features for morphological classification.
 - **Optimization:** Both phases utilize the **AdamW** optimizer combined with a **Cosine Annealing** learning rate scheduler.
 
@@ -84,11 +88,15 @@ Although it isn't a mathematically rigorous method, feature visualization was us
 
 ## Training Methods
 
-### Data Augmentation Consistency
+### Data Augmentation
 As mentioned above, the augmentations consisted of rotations, flips, color jitters, crops and GaussianBlurs. 
 This set of augmentations was carefully chosen to preserve the morphological features of the galaxies while introducing enough variability to prevent overfitting. 
 
-For example - an aggresive gaussian blurring could blur the spiral arms of the galaxy or a random crop could cut off the galaxy's bulge. Additionally, the color of the galaxy is a strong indicator to it's age and star formation rate, so the color jitter is kept minimal to preserve this information. 
+For example - an aggresive gaussian blurring could blur the spiral arms of the galaxy or a random crop could cut off the galaxy's bulge. On the other hand, gaussian blurring can simulate different observational phenomena, such as atmospheric turbulence or telescope resolution limits.
+
+Since galaxies don't have a prefered oriantaion with respect to us, and are rotationally invariant, we introduces flips and rotations by random angles. This also simulates different viewing angles of the galaxy. Being rotationally invariant isn't a default property of astronomical objects, as many objects are obscured / radiate in a specific directions and thus the symmetry is broken (such as flares in black holes). 
+
+On the other hand, the color of the galaxy is a strong indicator to it's age and star formation rate, so the color jitter is kept minimal to preserve this information. 
 
 The project maintains strict consistency by using identical augmentation parameters for both the baseline supervised run and the SimCLR pre-training. This isolates the effect of the self-supervised objective on the model's final performance.
 
@@ -168,7 +176,7 @@ Our evaluation is based on performence metrics on the test set for each model, w
     - Baseline CNN: While achieving higher accuracy, feature attribution reveals that the model partially relies on boundary artifacts and spurious background signals for its predictions.
     - SimCLR: The SSL backbone demonstrates superior object-centricity, successfully ignoring frame-edge noise that confounded the supervised baseline.
     - Conclusion: The baseline’s "superiority" may be partially inflated by its ability to exploit these shortcuts, whereas SimCLR learns a more physically grounded (though currently less precise) representation. The images are represented below.
-
+ 
     
 ### Model Interpretability & Failure Analysis
 
