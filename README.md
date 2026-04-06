@@ -2,7 +2,7 @@
 
 This repository provides a deep learning framework for classifying galaxy morphologies using the Galaxy Zoo dataset. The dataset consists of 17.7k images of galaxies with 10 different morphological classes.
 
-This project investigates how convolutional neural networks behave under real-world image inconsistencies such as scale variation, off-center objects, and multiple targets per frame. Using the Galaxy Zoo dataset, we analyze model robustness, feature attribution, and the impact of augmentation strategies on classification performance.
+This project investigates how convolutional neural networks behave under real-world image inconsistencies such as scale variation and multiple targets per frame. Using the Galaxy Zoo dataset, we analyze model robustness, feature attribution, and the impact of augmentation strategies on classification performance.
 
 ## The data
 
@@ -51,7 +51,7 @@ These factors make the task closer to real-world vision systems, where robustnes
 The project follows a specific three-step scientific process:
 
 ### 1. Baseline CNN Training
-A baseline CNN is trained using a specific set of augmentations. The augmentations (rotations, flips, color jitters, crops and gaussian blurs) were designed not only to improve generalization, but also to simulate real-world imaging artifacts such as orientation variance, slight blur, and illumination changes. More details about these augmentations are expressed below.
+A baseline CNN is trained using a specific set of augmentations. The augmentations (rotations, flips, color jitters, crops and gaussian blurs) were designed not only to improve generalization, but also to simulate real-world imaging artifacts such as orientation variance, slight blur, and illumination changes. More details about these augmentations are expressed below. For the baseline CNN training hyperparameters, see the .md file in the CNN model folder.
 
 The architecture was inspired by ResNet with CrossEntropy loss function, and can be seen here:
 
@@ -59,7 +59,7 @@ The architecture was inspired by ResNet with CrossEntropy loss function, and can
 
 
 ### 2. SimCLR Pre-training
-The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed below, the SimCLR actually provided worse results than the baseline CNN. For the SimCLR training hyperparameters, see the .md file in the SimCLR training folder.
+The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed below, the SimCLR actually provided worse results than the baseline CNN but manages to focus on the target galaxies better. For the SimCLR training hyperparameters, see the .md file in the SimCLR training folder.
 
 ### 3. LP-FT Training Logic
 To maximize the utility of the SimCLR-pretrained backbone, the pipeline implements a two-phase **Linear Probing then Full Fine-Tuning (LP-FT)** strategy:
@@ -78,7 +78,7 @@ In each model's folder there is a .md file with the hyperparameters and augmenta
 
 Although it isn't a mathematically rigorous method, feature visualization was used as a diagnostic tool to understand model behavior, identify failure modes, and detect shortcut learning (e.g., reliance on background artifacts instead of galaxy structure). Three visualization methods were used:
 
-- **GradCam** - the most intuitive method, it highlights the regions of the image that the model is focusing on when making a prediction. This was used to verify whether predictions are based on meaningful galaxy structures or spurious background features. It turned out to be especially useful in the SimCLR training process as the algorithm is very sensitive to the choice of augmentations. 
+- **GradCam** - the most intuitive method, it highlights the regions of the image that the model is focusing on when making a prediction. This was used to verify whether predictions are based on meaningful galaxy structures or background features. It turned out to be especially useful in the SimCLR training process as the algorithm is very sensitive to the choice of augmentations. 
 - **FeatureMaps** - this shows the evolution of the feature maps through the layers of the CNN. It helped us visualize the hierarchical feature learning of the model. 
 - **Nearest Neighbors** - this shows the most similar images in the dataset to a given image in the learned feature space. It helped us visualize the feature space of the model and identify whether the model was learning meaningful features. Furthermore, it helped us identify 'problematic' classes, such as disturbed galaxies that don't have a clear morphology. 
 
@@ -173,7 +173,7 @@ Our evaluation is based on performence metrics on the test set for each model, w
 - Self-supervised pretraining (SimCLR) did not improve performance, suggesting that data ambiguity and localization challenges dominate over representation learning limitations
 
 - Detection of Shortcut Learning via Grad-CAM
-    - Baseline CNN: While achieving higher accuracy, feature attribution reveals that the model partially relies on boundary artifacts and spurious background signals for its predictions.
+    - Baseline CNN: While achieving higher accuracy, feature attribution reveals that the model partially relies on boundary artifacts and background signals for its predictions.
     - SimCLR: The SSL backbone demonstrates superior object-centricity, successfully ignoring frame-edge noise that confounded the supervised baseline.
     - Conclusion: The baseline’s "superiority" may be partially inflated by its ability to exploit these shortcuts, whereas SimCLR learns a more physically grounded (though currently less precise) representation. The images are represented below.
  
@@ -193,8 +193,6 @@ Our evaluation is based on performence metrics on the test set for each model, w
 The two models (Baseline CNN and the SimCLR fine-tuned model) achieved similar results, with the Baseline CNN model outperforming the SimCLR model by a small margin. The two models performed well on most galaxies (around 80%-90% F1 score) but struggled with certain classes, such as disturbed and loose galaxies that don't have a clear morphology. 
 
 The baseline CNN model performed better on those 'harder' classes which gave it the better overall results. The primary challenge was not model capacity, but data inconsistency. In many cases, galaxies were small or surrounded by additional objects, causing the model to attend to incorrect regions and leading to systematic misclassification.
-
-The SimCLR fine-tuned model underperformed the supervised baseline (0.79 vs 0.84 Macro $F_1$), where the main diffenece was in the distrubed class. As can be seen in the GradCam visualizations, the CNN was better at extracting the meaningful features but not nessecarily finding the correct object to focus on. 
 
 These results indicate that performance is bottlenecked by object localization and data ambiguity rather than model architecture, suggesting that improvements would require better target isolation (e.g., cropping or detection) rather than more complex models. This behavior mirrors real-world vision systems, where failures are often driven by data ambiguity and scene complexity rather than model capacity.
 
