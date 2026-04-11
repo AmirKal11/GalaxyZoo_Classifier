@@ -64,7 +64,7 @@ The SimCLR framework is trained using the **exact same set of augmentations** as
 ### 3. LP-FT Training Logic
 To maximize the utility of the SimCLR-pretrained backbone, the pipeline implements a two-phase **Linear Probing then Full Fine-Tuning (LP-FT)** strategy:
 
-- **Phase 1: Linear Probing (Epochs $0$–$20$):**
+- **Phase 1: Linear Probing (Epochs $0$–20):**
     * The pre-trained backbone is frozen, and only the fully connected (`fc`) classification head is trained.
     * A higher learning rate (starting at $10^{-2}$) is used to "warm up" the head without distorting the pre-trained features.
 - **Phase 2: Full Fine-Tuning (Epochs $20+$):**
