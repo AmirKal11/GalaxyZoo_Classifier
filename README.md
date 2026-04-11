@@ -59,7 +59,7 @@ The architecture was inspired by ResNet with CrossEntropy loss function, and can
 
 
 ### 2. SimCLR Pre-training
-The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed below, the SimCLR actually provided worse results than the baseline CNN but manages to focus on the target galaxies better. For the SimCLR training hyperparameters, see the .md file in the SimCLR training folder.
+The SimCLR framework is trained using the **exact same set of augmentations** as the baseline CNN using NT-Xent loss function. This ensures a controlled comparison between the supervised baseline and the self-supervised approach. The model learns to map augmented views of the same galaxy to similar points in a latent space. This setup allows us to test whether self-supervised representation learning can improve robustness in the presence of structural ambiguity. As will be discussed below, the SimCLR actually provided worse results than the baseline CNN but manages to focus on the target galaxies better. For the SimCLR training hyperparameters, see the .md file in the SimCLR training folder.
 
 ### 3. LP-FT Training Logic
 To maximize the utility of the SimCLR-pretrained backbone, the pipeline implements a two-phase **Linear Probing then Full Fine-Tuning (LP-FT)** strategy:
